@@ -1,40 +1,41 @@
 /*
 ** EPITECH PROJECT, 2023
-** my rpg
+** my_rpg
 ** File description:
-** animation for char and map 
+** map + collisions + animated mov
 */
 
 #include <SFML/Graphics.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <math.h>
 
 int main() {
-    sfVideoMode mode = {800, 600, 32};
+    sfVideoMode mode = {975, 650, 32};
     sfRenderWindow* window;
     sfEvent event;
     sfClock* clock = sfClock_create();
     sfTime elapsed;
 
-    //  main Window
+    // create the main Window
     window = sfRenderWindow_create(mode, "Top-Down Map", sfResize | sfClose, NULL);
     if (!window) return -1;
 
-    // Load map texture
-    sfTexture* mapTexture = sfTexture_createFromFile("assets/map.png", NULL);
+    // Map texture
+    sfTexture* mapTexture = sfTexture_createFromFile("assets/mapcollisions.png", NULL);
     if (!mapTexture) return -1;
 
     sfSprite* mapSprite = sfSprite_create();
     sfSprite_setTexture(mapSprite, mapTexture, sfTrue);
 
-    // Load char textures
+    // Load character textures
     sfTexture* characterTextures[4][6]; // 2D array for all directions and frames
     sfSprite* characterSprite = sfSprite_create();
     int currentDirection = 0;
     int currentFrame = 0;
     sfBool isMoving = sfFalse;
 
-    // Load character textures for all directions and frames
+    // Load character textures for all dir & frames
     char directionNames[4][15] = {
         "characterback",
         "characterright",
@@ -49,8 +50,16 @@ int main() {
             characterTextures[i][j] = sfTexture_createFromFile(filename, NULL);
         }
     }
+    // Load collision map
+    sfImage* collisionImage = sfImage_createFromFile("assets/mapcollisions.png");
+    if (!collisionImage) return -1;
+
+    unsigned int mapWidth = 950;
+    unsigned int mapHeight = 650;
+    sfColor collisionColor = sfBlack;
 
     sfVector2f characterPosition = {535.0f, 52.0f}; // Starting position
+    sfVector2f characterSize = {(float)sfImage_getSize(characterTextures[0][0]).x, (float)sfImage_getSize(characterTextures[0][0]).y};
 
     while (sfRenderWindow_isOpen(window)) {
         while (sfRenderWindow_pollEvent(window, &event)) {
@@ -66,38 +75,55 @@ int main() {
 
         sfRenderWindow_clear(window, sfBlack); // Clear the window
 
-        // Draw the map sprite
+        // Draw map sprite
         sfRenderWindow_drawSprite(window, mapSprite, NULL);
 
-        // set character texture based on movement direction and frame
+        // Set character texture based on movement direction & frame
         sfSprite_setTexture(characterSprite, characterTextures[currentDirection][currentFrame], sfTrue);
         sfSprite_setPosition(characterSprite, characterPosition);
         sfRenderWindow_drawSprite(window, characterSprite, NULL);
 
-        // handle user input (key)
+        // Handle user input (key)
         float movement = 0.10f;
+        sfVector2f nextPosition = characterPosition; // Initialize next position to curr position
+
         if (sfKeyboard_isKeyPressed(sfKeyUp)) {
-            characterPosition.y -= movement;
-            currentDirection = 0; // back /up
+            nextPosition.y -= movement;
+            currentDirection = 0; // char to face back / when up
             isMoving = sfTrue;
         }
         else if (sfKeyboard_isKeyPressed(sfKeyDown)) {
-            characterPosition.y += movement;
-            currentDirection = 3; // down / font
+            nextPosition.y += movement;
+            currentDirection = 3; // Set character to face front / (down)
             isMoving = sfTrue;
         }
         else if (sfKeyboard_isKeyPressed(sfKeyLeft)) {
-            characterPosition.x -= movement;
-            currentDirection = 2; // char left
+            nextPosition.x -= movement;
+            currentDirection = 2; // Set char to left
             isMoving = sfTrue;
         }
-        else if (sfKeyboard_isKeyPressed(sfKeyRight)) { // char to right
-            characterPosition.x += movement;
-            currentDirection = 1; 
+        else if (sfKeyboard_isKeyPressed(sfKeyRight)) {
+            nextPosition.x += movement;
+            currentDirection = 1; // Set character to face right
             isMoving = sfTrue;
         }
         else {
             isMoving = sfFalse;
+        }
+
+        // Check for collisions with the collision map
+        if (nextPosition.x >= 0 && nextPosition.x < mapWidth && nextPosition.y >= 0 && nextPosition.y < mapHeight) {
+            sfColor pixelColor = sfImage_getPixel(collisionImage, (unsigned int)nextPosition.x, (unsigned int)nextPosition.y);
+
+            if (pixelColor.r == collisionColor.r && pixelColor.g == collisionColor.g && pixelColor.b == collisionColor.b) {
+                // Handle collision with black pixels 
+                // Here = stop mov
+                isMoving = sfFalse;
+            }
+            else {
+                // If no collision, update character position
+                characterPosition = nextPosition;
+            }
         }
 
         // Display the window
